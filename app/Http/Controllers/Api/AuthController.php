@@ -24,9 +24,9 @@ class AuthController extends Controller
             [
                 'name' => 'required',
                 'email' => 'required|email|unique:users,email',
-                'password' => 'required',
-                'phone' => 'required',
-                'pictur' => 'required',
+                'phone' => ['required' , 'numeric' , 'min:11'],
+                'password' => ['required'],
+                'pictur' => ['sometimes'],
             ]);
 
 
