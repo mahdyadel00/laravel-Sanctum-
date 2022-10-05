@@ -93,7 +93,6 @@ class UserController extends Controller
     public function logout(Request $request)
     {
         try {
-
             if(Auth::user()){
             $user = Auth::user();
             Auth::user()->currentAccessToken()->delete();;
