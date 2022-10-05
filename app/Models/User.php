@@ -24,6 +24,7 @@ class User extends Authenticatable
         'guard',
         'phone',
         'pictur',
+        'pin_code',
     ];
 
     /**

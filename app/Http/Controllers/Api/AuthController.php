@@ -11,7 +11,7 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-     /**
+    /**
      * Create User
      * @param Request $request
      * @return User
@@ -20,17 +20,19 @@ class AuthController extends Controller
     {
         try {
             //Validated
-            $validateUser = Validator::make($request->all(),
-            [
-                'name' => 'required',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required',
-                'phone' => 'required',
-                'pictur' => 'required',
-            ]);
+            $validateUser = Validator::make(
+                $request->all(),
+                [
+                    'name' => 'required',
+                    'email' => 'required|email|unique:users,email',
+                    'password' => 'required',
+                    'phone' => 'required',
+                    'pictur' => 'required',
+                ]
+            );
 
 
-            if($validateUser->fails()){
+            if ($validateUser->fails()) {
                 return response()->json([
                     'status' => false,
                     'message' => 'validation error',
@@ -59,7 +61,6 @@ class AuthController extends Controller
                 'message' => 'User Created Successfully',
                 'token' => $user->createToken("API TOKEN")->plainTextToken
             ], 200);
-
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => false,
@@ -68,7 +69,7 @@ class AuthController extends Controller
         }
     }
 
-     /**
+    /**
      * Login The User
      * @param Request $request
      * @return User
@@ -76,13 +77,15 @@ class AuthController extends Controller
     public function loginUser(Request $request)
     {
         try {
-            $validateUser = Validator::make($request->all(),
-            [
-                'email' => 'required|email',
-                'password' => 'required'
-            ]);
+            $validateUser = Validator::make(
+                $request->all(),
+                [
+                    'email' => 'required|email',
+                    'password' => 'required'
+                ]
+            );
 
-            if($validateUser->fails()){
+            if ($validateUser->fails()) {
                 return response()->json([
                     'status' => false,
                     'message' => 'validation error',
@@ -90,7 +93,7 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            if(!Auth::attempt($request->only(['email', 'password']))){
+            if (!Auth::attempt($request->only(['email', 'password']))) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Email & Password does not match with our record.',
@@ -104,7 +107,6 @@ class AuthController extends Controller
                 'message' => 'User Logged In Successfully',
                 'token' => $user->createToken("API TOKEN")->plainTextToken
             ], 200);
-
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => false,
@@ -112,6 +114,109 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    public function checkEmail(Request $request)
+    {
+
+        try {
+            if (Auth::guest()) {
+                $validator = validator()->make($request->all(), [
+                    'email'  => 'required|string|email|max:191|exists:users'
+                ]);
+                if ($validator->fails()) {
+                    $errorData = $validator->errors();
+                    return response()->json(['status' => false, 'message' => $errorData]);
+                }
+                $user = User::where('email', $request->email)->first();
+                if ($user != null) {
+                    $code = rand(111111, 999999);
+                    $updateUser = $user->update(['pin_code' => $code]);
+                    if ($updateUser) {
+                        //send email
+                        // Mail::to($user->email)
+                        // 	//->bcc("mahdyadel00@gmail.com")
+                        // 	->send(new ResetPassword($code));
+                        return response()->json([
+                            'status' => true,
+                            'message' => 'Your code has been sent successfully, please check your email now!',
+                            'data' => $user,
+                            'pin_code' => $code,
+                        ], 200);
+                    } else {
+                        return response()->json(['status' => false, 'message' => 'orry, an error has occurred, please try again!']);
+                    }
+                } else {
+                    response()->json(['status' => false, 'message' => 'Sorry, there is no account associated with this email!']);
+                }
+            } else {
+                response()->json(['status' => false, 'message' => 'User is logged in']);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['status' => false, 'message' => $th->getMessage()], 500);
+        }
+    }
+
+    public function checkCode(Request $request)
+    {
+        try {
+            $validator = validator()->make($request->all(), [
+                'pin_code' => 'required|exists:users',
+            ]);
+
+            if ($validator->fails()) {
+                $errorData = $validator->errors();
+                return $this->sendError($errorData->first(), $errorData);
+            } else {
+                $user = User::where('pin_code', $request->pin_code)->where('pin_code', '!=', 0)->first();
+                if ($user) {
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'The code is correct',
+                        'data' => $user,
+                        'pin_code' => $user->pin_code,
+                    ], 200);
+                } else {
+                    return $this->sendError('User is logged in');
+                }
+            }
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => $th->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resetPassword(Request $request)
+    {
+        try {
+            $validator = validator()->make($request->all(), [
+                'pin_code' => 'required|exists:users',
+                'password' => 'required|confirmed|min:6'
+            ]);
+            if ($validator->fails()) {
+                $errorData = $validator->errors();
+                return response()->json(['status' => false, 'message' => $errorData]);
+            } else {
+                $user = User::where('pin_code', $request->pin_code)->where('pin_code', '!=', 0)->first();
+                if ($user) {
+                    $user->update([
+                        "password" => bcrypt($request->password),
+                        "pin_code" => null
+                    ]);
+                    if ($user->save()) {
+                        return response()->json([
+                            'status' => true, 'message' => 'The password has been reset successfully', 'data' => $user,
+                        ], 200);
+                    } else {
+                        return response()->json(['status' => false, 'message' => 'Sorry, an error has occurred, please try again!']);
+                    }
+                } else {
+                    return response()->json(['status' => false, 'message' => 'Sorry, this code is invalid!']);
+                }
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['status' => false, 'message' => $th->getMessage()], 500);
+        }
+    }
 }
-
-

@@ -18,9 +18,9 @@ use App\Http\Controllers\Api\UserController;
     Route::post('/auth/register', [AuthController::class, 'createUser']);
     Route::post('/auth/login', [AuthController::class, 'loginUser']);
 
-    Route::post('reset/send_code', 'AdminController@checkEmail');
-    Route::post('reset/check_code', 'AdminController@checkCode');
-    Route::post('reset/reset_password', 'AdminController@resetPassword');
+    Route::post('reset/send_code', [AuthController::class , 'checkEmail']);
+    Route::post('reset/check_code', [AuthController::class , 'checkCode']);
+    Route::post('reset/reset_password', [AuthController::class  , 'resetPassword']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
